@@ -1,0 +1,293 @@
+{% extends "base.html" %} {% block title %}Dashboard - MATLAB Script Executor{%
+endblock %} {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
+  <a href="{{ url_for('upload_file') }}" class="btn btn-primary">
+    <i class="bi bi-cloud-upload"></i> Upload Script
+  </a>
+</div>
+
+<!-- Statistics -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card bg-primary text-white">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div>
+            <h4>{{ stats.total }}</h4>
+            <p class="mb-0">Total Scripts</p>
+          </div>
+          <i class="bi bi-file-earmark-code fs-1"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-success text-white">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div>
+            <h4>{{ stats.completed }}</h4>
+            <p class="mb-0">Completed</p>
+          </div>
+          <i class="bi bi-check-circle fs-1"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-warning text-white">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div>
+            <h4>{{ stats.running }}</h4>
+            <p class="mb-0">Running</p>
+          </div>
+          <i class="bi bi-play-circle fs-1"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card bg-danger text-white">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div>
+            <h4>{{ stats.failed }}</h4>
+            <p class="mb-0">Failed</p>
+          </div>
+          <i class="bi bi-x-circle fs-1"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Uploads -->
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Uploads</h5>
+  </div>
+  <div class="card-body">
+    {% if uploads %}
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>File Name</th>
+            <th>Status</th>
+            <th>Uploaded</th>
+            <th>Duration</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for upload in uploads %}
+          <tr>
+            <td>
+              <i class="bi bi-file-earmark-code text-primary"></i>
+              {{ upload.file_name }}
+            </td>
+            <td>
+              {% if upload.status == 'completed' %}
+              <span class="badge bg-success status-badge">
+                <i class="bi bi-check-circle"></i> Completed
+              </span>
+              {% elif upload.status == 'running' %}
+              <span class="badge bg-warning status-badge">
+                <i class="bi bi-play-circle"></i> Running
+              </span>
+              {% elif upload.status == 'failed' %}
+              <span class="badge bg-danger status-badge">
+                <i class="bi bi-x-circle"></i> Failed
+              </span>
+              {% else %}
+              <span class="badge bg-secondary status-badge">
+                <i class="bi bi-clock"></i> Uploaded
+              </span>
+              {% endif %}
+            </td>
+            <td>{{ upload.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+              {% if upload.execution_duration %} {{
+              "%.1f"|format(upload.execution_duration) }}s {% else %} - {% endif
+              %}
+            </td>
+            <td>
+              <div class="btn-group" role="group">
+                {% if upload.status == 'uploaded' %}
+                <button
+                  class="btn btn-sm btn-outline-primary"
+                  onclick="runScript({{ upload.id }})"
+                >
+                  <i class="bi bi-play"></i> Run
+                </button>
+                {% elif upload.status == 'running' %}
+                <button
+                  class="btn btn-sm btn-outline-warning"
+                  onclick="cancelScript({{ upload.id }})"
+                >
+                  <i class="bi bi-stop"></i> Cancel
+                </button>
+                {% endif %}
+
+                <a
+                  href="{{ url_for('view_result', upload_id=upload.id) }}"
+                  class="btn btn-sm btn-outline-info"
+                >
+                  <i class="bi bi-eye"></i> View
+                </a>
+
+                {% if upload.status == 'completed' and upload.result_path %}
+                <a
+                  href="{{ url_for('download_results', upload_id=upload.id) }}"
+                  class="btn btn-sm btn-outline-success"
+                >
+                  <i class="bi bi-download"></i> Download
+                </a>
+                {% endif %}
+
+                <button
+                  class="btn btn-sm btn-outline-danger"
+                  onclick="deleteUpload({{ upload.id }}, '{{ upload.file_name }}')"
+                >
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <i class="bi bi-file-earmark-plus display-1 text-muted"></i>
+      <h4 class="text-muted mt-3">No scripts uploaded yet</h4>
+      <p class="text-muted">Upload your first MATLAB script to get started!</p>
+      <a href="{{ url_for('upload_file') }}" class="btn btn-primary">
+        <i class="bi bi-cloud-upload"></i> Upload Script
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Delete Upload</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <p>
+          Are you sure you want to delete <strong id="deleteFileName"></strong>?
+        </p>
+        <p class="text-muted small">
+          This will permanently delete the uploaded file and all associated
+          results.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <form id="deleteForm" method="POST" style="display: inline">
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Delete
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  function runScript(uploadId) {
+    const button = event.target;
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="bi bi-hourglass-split"></i> Running...';
+
+    fetch(`/run/${uploadId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          location.reload(); // Refresh to show updated status
+        } else {
+          alert(`Execution failed: ${data.error}`);
+          button.disabled = false;
+          button.innerHTML = originalHtml;
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("Failed to start execution");
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+      });
+  }
+
+  function cancelScript(uploadId) {
+    if (!confirm("Are you sure you want to cancel this execution?")) {
+      return;
+    }
+
+    fetch(`/execute/cancel/${uploadId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert(`Failed to cancel: ${data.error}`);
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("Failed to cancel execution");
+      });
+  }
+
+  function deleteUpload(uploadId, fileName) {
+    document.getElementById("deleteFileName").textContent = fileName;
+    document.getElementById("deleteForm").action = `/delete/${uploadId}`;
+
+    const deleteModal = new bootstrap.Modal(
+      document.getElementById("deleteModal")
+    );
+    deleteModal.show();
+  }
+
+  // Auto-refresh for running scripts
+  function autoRefresh() {
+    const runningElements = document.querySelectorAll(".badge.bg-warning");
+    if (runningElements.length > 0) {
+      setTimeout(() => {
+        location.reload();
+      }, 5000); // Refresh every 5 seconds if there are running scripts
+    }
+  }
+
+  // Start auto-refresh
+  autoRefresh();
+</script>
+{% endblock %}

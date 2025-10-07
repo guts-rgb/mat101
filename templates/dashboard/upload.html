@@ -1,0 +1,172 @@
+{% extends "base.html" %} {% block title %}Upload Script - MATLAB Script
+Executor{% endblock %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h4 class="mb-0">
+          <i class="bi bi-cloud-upload"></i> Upload MATLAB Script
+        </h4>
+      </div>
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+          <div class="mb-3">
+            <label for="file" class="form-label">Select .m file</label>
+            <input
+              type="file"
+              class="form-control"
+              id="file"
+              name="file"
+              accept=".m"
+              required
+            />
+            <div class="form-text">
+              Only MATLAB script files (.m) are allowed. Maximum file size: 16MB
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="form-check">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="autoRun"
+                name="auto_run"
+              />
+              <label class="form-check-label" for="autoRun">
+                Run script immediately after upload
+              </label>
+            </div>
+          </div>
+
+          <!-- File Preview -->
+          <div id="filePreview" class="mb-3" style="display: none">
+            <h6>File Preview:</h6>
+            <div class="border rounded p-2" style="background-color: #f8f9fa">
+              <p class="mb-1">
+                <strong>Name:</strong> <span id="fileName"></span>
+              </p>
+              <p class="mb-1">
+                <strong>Size:</strong> <span id="fileSize"></span>
+              </p>
+              <p class="mb-0">
+                <strong>Type:</strong> <span id="fileType"></span>
+              </p>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+              <i class="bi bi-cloud-upload"></i> Upload Script
+            </button>
+            <a
+              href="{{ url_for('dashboard') }}"
+              class="btn btn-outline-secondary"
+            >
+              <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Upload Guidelines -->
+    <div class="card mt-4">
+      <div class="card-header">
+        <h6 class="mb-0">
+          <i class="bi bi-info-circle"></i> Upload Guidelines
+        </h6>
+      </div>
+      <div class="card-body">
+        <ul class="mb-0">
+          <li>
+            Only MATLAB script files with <code>.m</code> extension are allowed
+          </li>
+          <li>Maximum file size is 16MB</li>
+          <li>Scripts will run in a sandboxed environment</li>
+          <li>Execution timeout is set to 5 minutes</li>
+          <li>Generated plots and outputs will be saved automatically</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Security Notice -->
+    <div class="card mt-3 border-warning">
+      <div class="card-body">
+        <h6 class="card-title text-warning">
+          <i class="bi bi-shield-exclamation"></i> Security Notice
+        </h6>
+        <p class="card-text small">
+          For security reasons, certain MATLAB commands that interact with the
+          file system or execute system commands may be restricted. Scripts
+          should focus on computational tasks and data visualization.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.getElementById("file").addEventListener("change", function (e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById("filePreview");
+
+    if (file) {
+      // Validate file type
+      if (!file.name.toLowerCase().endsWith(".m")) {
+        alert("Please select a valid MATLAB script file (.m)");
+        this.value = "";
+        preview.style.display = "none";
+        return;
+      }
+
+      // Validate file size (16MB limit)
+      if (file.size > 16 * 1024 * 1024) {
+        alert("File size must be less than 16MB");
+        this.value = "";
+        preview.style.display = "none";
+        return;
+      }
+
+      // Show preview
+      document.getElementById("fileName").textContent = file.name;
+      document.getElementById("fileSize").textContent = formatFileSize(
+        file.size
+      );
+      document.getElementById("fileType").textContent = "MATLAB Script (.m)";
+      preview.style.display = "block";
+    } else {
+      preview.style.display = "none";
+    }
+  });
+
+  // Form submission handling
+  document
+    .getElementById("uploadForm")
+    .addEventListener("submit", function (e) {
+      const submitBtn = document.getElementById("submitBtn");
+      const file = document.getElementById("file").files[0];
+
+      if (!file) {
+        e.preventDefault();
+        alert("Please select a file to upload");
+        return;
+      }
+
+      // Disable submit button and show loading
+      submitBtn.disabled = true;
+      submitBtn.innerHTML =
+        '<i class="bi bi-hourglass-split"></i> Uploading...';
+    });
+
+  function formatFileSize(bytes) {
+    if (bytes === 0) return "0 Bytes";
+
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  }
+</script>
+{% endblock %}

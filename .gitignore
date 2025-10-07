@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+
+instance/
+
+uploads/
+
+*.log
+
+proj/
+
+.DS_Store
+Thumbs.db
+
+new/
+results/

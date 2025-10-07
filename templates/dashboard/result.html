@@ -1,0 +1,240 @@
+{% extends "base.html" %} {% block title %}{{ upload.file_name }} Results -
+MATLAB Script Executor{% endblock %} {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><i class="bi bi-file-earmark-code"></i> {{ upload.file_name }}</h2>
+  <div>
+    {% if upload.status == 'completed' and upload.result_path %}
+    <a
+      href="{{ url_for('download_results', upload_id=upload.id) }}"
+      class="btn btn-success"
+    >
+      <i class="bi bi-download"></i> Download Results
+    </a>
+    {% endif %}
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+  </div>
+</div>
+
+<!-- Status and Info -->
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="card-title">Execution Status</h6>
+        <div class="d-flex align-items-center">
+          {% if upload.status == 'completed' %}
+          <span class="badge bg-success me-2">
+            <i class="bi bi-check-circle"></i> Completed
+          </span>
+          {% elif upload.status == 'running' %}
+          <span class="badge bg-warning me-2">
+            <i class="bi bi-play-circle"></i> Running
+          </span>
+          <button
+            class="btn btn-sm btn-outline-danger"
+            onclick="cancelExecution()"
+          >
+            <i class="bi bi-stop"></i> Cancel
+          </button>
+          {% elif upload.status == 'failed' %}
+          <span class="badge bg-danger me-2">
+            <i class="bi bi-x-circle"></i> Failed
+          </span>
+          {% else %}
+          <span class="badge bg-secondary me-2">
+            <i class="bi bi-clock"></i> Uploaded
+          </span>
+          <button class="btn btn-sm btn-primary" onclick="runExecution()">
+            <i class="bi bi-play"></i> Run Script
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="card-title">Execution Details</h6>
+        <p class="mb-1">
+          <strong>Uploaded:</strong> {{ upload.timestamp.strftime('%Y-%m-%d
+          %H:%M:%S') }}
+        </p>
+        {% if upload.completed_at %}
+        <p class="mb-1">
+          <strong>Completed:</strong> {{ upload.completed_at.strftime('%Y-%m-%d
+          %H:%M:%S') }}
+        </p>
+        {% endif %} {% if upload.execution_duration %}
+        <p class="mb-0">
+          <strong>Duration:</strong> {{ "%.2f"|format(upload.execution_duration)
+          }} seconds
+        </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Error Message -->
+{% if upload.error_message %}
+<div class="alert alert-danger">
+  <h6><i class="bi bi-exclamation-triangle"></i> Execution Error</h6>
+  <pre class="mb-0">{{ upload.error_message }}</pre>
+</div>
+{% endif %}
+
+<!-- Execution Log -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h6 class="mb-0"><i class="bi bi-terminal"></i> Execution Log</h6>
+    {% if upload.status == 'running' %}
+    <button class="btn btn-sm btn-outline-primary" onclick="refreshLog()">
+      <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <div class="log-output p-3" id="logOutput">{{ log_content }}</div>
+  </div>
+</div>
+
+<!-- Generated Files -->
+{% if result_files %}
+<div class="card">
+  <div class="card-header">
+    <h6 class="mb-0"><i class="bi bi-files"></i> Generated Files</h6>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      {% for file in result_files %}
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card border">
+          <div class="card-body text-center">
+            {% if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif',
+            '.bmp')) %}
+            <i class="bi bi-image text-primary fs-1"></i>
+            <p class="card-text mt-2">Image</p>
+            {% elif file.lower().endswith(('.txt', '.log')) %}
+            <i class="bi bi-file-text text-info fs-1"></i>
+            <p class="card-text mt-2">Text File</p>
+            {% elif file.lower().endswith(('.mat', '.dat')) %}
+            <i class="bi bi-database text-warning fs-1"></i>
+            <p class="card-text mt-2">Data File</p>
+            {% else %}
+            <i class="bi bi-file text-secondary fs-1"></i>
+            <p class="card-text mt-2">File</p>
+            {% endif %}
+            <h6 class="card-title">{{ file }}</h6>
+            <small class="text-muted"
+              >{{ file.split('.')[-1].upper() if '.' in file else 'FILE'
+              }}</small
+            >
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% elif upload.status == 'completed' %}
+<div class="alert alert-info">
+  <i class="bi bi-info-circle"></i> No output files were generated by this
+  script.
+</div>
+{% endif %} {% endblock %} {% block scripts %}
+<script>
+  function runExecution() {
+      const button = event.target;
+      const originalHtml = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting...';
+
+      fetch(`/run/{{ upload.id }}`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          }
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.success || data.status === 'running') {
+              location.reload();
+          } else {
+              alert(`Failed to start execution: ${data.error}`);
+              button.disabled = false;
+              button.innerHTML = originalHtml;
+          }
+      })
+      .catch(error => {
+          console.error('Error:', error);
+          alert('Failed to start execution');
+          button.disabled = false;
+          button.innerHTML = originalHtml;
+      });
+  }
+
+  function cancelExecution() {
+      if (!confirm('Are you sure you want to cancel this execution?')) {
+          return;
+      }
+
+      fetch(`/execute/cancel/{{ upload.id }}`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          }
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              location.reload();
+          } else {
+              alert(`Failed to cancel execution: ${data.error}`);
+          }
+      })
+      .catch(error => {
+          console.error('Error:', error);
+          alert('Failed to cancel execution');
+      });
+  }
+
+  function refreshLog() {
+      fetch(`/status/{{ upload.id }}`)
+      .then(response => response.json())
+      .then(data => {
+          document.getElementById('logOutput').textContent = data.execution_log || 'No log data available';
+
+          // If status changed, reload the page
+          if (data.status !== '{{ upload.status }}') {
+              location.reload();
+          }
+      })
+      .catch(error => {
+          console.error('Error refreshing log:', error);
+      });
+  }
+
+  // Auto-refresh for running scripts
+  {% if upload.status == 'running' %}
+  setInterval(function() {
+      fetch(`/status/{{ upload.id }}`)
+      .then(response => response.json())
+      .then(data => {
+          document.getElementById('logOutput').textContent = data.execution_log || 'No log data available';
+
+          // If execution completed, reload the page
+          if (data.status !== 'running') {
+              location.reload();
+          }
+      })
+      .catch(error => {
+          console.error('Error checking status:', error);
+      });
+  }, 3000); // Check every 3 seconds
+  {% endif %}
+</script>
+{% endblock %}
