@@ -6,11 +6,11 @@ A Flask web application for uploading and executing MATLAB scripts through a web
 
 ## Features
 
-- 🔐 User authentication and registration
-- 📁 Upload MATLAB .m files through web interface
-- ⚡ Execute scripts using MATLAB Engine
-- 📊 Download organized results (logs, images, data files)
-- 📈 Real-time execution monitoring
+- User authentication and registration
+- Upload MATLAB .m files through web interface
+- Execute scripts using MATLAB Engine
+- Download organized results (logs, images, data files)
+- Real-time execution monitoring
 
 ![Login](media/Screenshot%202025-10-07%20074217.png) ![Upload](media/Screenshot%202025-10-07%20074316.png) ![Results](media/Screenshot%202025-10-07%20074456.png)
 
@@ -25,17 +25,17 @@ A Flask web application for uploading and executing MATLAB scripts through a web
    - Data files (MAT, CSV)
    - Scripts and reports
 
-## 📋 Requirements
+## Requirements
 
 - Python 3.7+
 - MATLAB R2016b+ with MATLAB Engine for Python
 - Web browser
 
-## 🔧 Tech Stack
+## Tech Stack
 
 Flask + SQLAlchemy + Bootstrap 5 + MATLAB Engine
 
-## 🔬 RT Lab Integration
+## RT Lab Integration
 
 Supports RT Lab library for real-time simulation and hardware-in-the-loop testing. Upload MATLAB scripts that utilize RT Lab functions for seamless real-time execution and data collection.
 
